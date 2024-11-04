@@ -1,6 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.responses import JSONResponse
-from transformers import BlipProcessor, BlipForConditionalGeneration
+from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
 from PIL import Image
 import torch
 import io
@@ -32,16 +32,18 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,            # Allow specified origins
+    allow_origins=origins,  # Allow specified origins
     allow_credentials=True,
-    allow_methods=["*"],              # Allow all HTTP methods
-    allow_headers=["*"],              # Allow all headers
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
 )
+
 
 # JWT Configuration
 class TokenData(BaseModel):
     username: str
     role: str
+
 
 # Dependency to extract the token from the Authorization header
 async def get_token(authorization: Optional[str] = Header(None)):
@@ -57,6 +59,7 @@ async def get_token(authorization: Optional[str] = Header(None)):
     token = parts[1]
     return token
 
+
 def verify_token(token: str = Depends(get_token)):
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -69,15 +72,24 @@ def verify_token(token: str = Depends(get_token)):
     except PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-# Load the BLIP model and processor
+
+# Load the smaller image captioning model and processor
 try:
-    processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-    model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+    model_name = "nlpconnect/vit-gpt2-image-captioning"
+    model = VisionEncoderDecoderModel.from_pretrained(model_name)
+    feature_extractor = ViTImageProcessor.from_pretrained(model_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device)
-    print(f"Model loaded on {device}")
+    print(f"Model '{model_name}' loaded on {device}")
 except Exception as e:
     print("Error loading model:", e)
+
+# Define generation parameters for efficiency
+max_length = 16
+num_beams = 4
+
 
 @app.post("/generate-caption/")
 async def generate_caption(file: UploadFile = File(...), token_data: TokenData = Depends(verify_token)):
@@ -96,22 +108,25 @@ async def generate_caption(file: UploadFile = File(...), token_data: TokenData =
 
     try:
         # Prepare the image for the model
-        inputs = processor(image, return_tensors="pt").to(device)
+        pixel_values = feature_extractor(images=image, return_tensors="pt").pixel_values
+        pixel_values = pixel_values.to(device)
 
         # Generate the caption
-        out = model.generate(**inputs)
-        caption = processor.decode(out[0], skip_special_tokens=True)
+        output_ids = model.generate(pixel_values, max_length=max_length, num_beams=num_beams)
+        caption = tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
         return JSONResponse(content={"caption": caption})
     except Exception as e:
         raise HTTPException(status_code=500, detail="Error generating caption") from e
 
+
 @app.get("/")
 def read_root():
-    return {"message": "Welcome to the Image-to-Text Generator API. Use the /generate-caption/ endpoint to generate captions for your images."}
+    return {
+        "message": "Welcome to the Image-to-Text Generator API. Use the /generate-caption/ endpoint to generate captions for your images."}
+
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
-
-

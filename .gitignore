@@ -22,3 +22,6 @@ venv/
 # System files
 .DS_Store
 Thumbs.db
+
+#docker
+.Dockerfile

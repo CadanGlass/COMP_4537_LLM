@@ -1,17 +1,27 @@
-from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
+# Standard Library Imports
+import io
+import os
+from typing import Optional
+
+# Third-Party Imports
+from fastapi import (
+    FastAPI,
+    File,
+    UploadFile,
+    HTTPException,
+    Depends,
+    Header
+)
 from fastapi.responses import JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from dotenv import load_dotenv
+import jwt
+from jwt.exceptions import PyJWTError
 from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
 from PIL import Image
 import torch
-import io
-from fastapi.middleware.cors import CORSMiddleware
-import jwt
-from pydantic import BaseModel
-from dotenv import load_dotenv
-import os
-from typing import Optional
-from fastapi import Header
-from jwt import PyJWTError  # Correct import for PyJWTError
+
 
 # Load environment variables from .env file
 load_dotenv()

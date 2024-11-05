@@ -24,10 +24,9 @@ app = FastAPI(title="Image-to-Text Generator")
 
 # CORS configuration
 origins = [
-    "https://cadan.xyz",
-    "http://localhost:3000",
-    "http://localhost:5173",  # Added frontend's local development port
-    # Add other origins as needed
+    "https://comp4537-term-project.netlify.app",  # Your hosted frontend URL
+    "http://localhost:3000",  # Local development
+    "http://localhost:5173"
 ]
 
 app.add_middleware(
@@ -39,23 +38,31 @@ app.add_middleware(
 )
 
 # JWT Configuration
+
+
 class TokenData(BaseModel):
     username: str
     role: str
 
 # Dependency to extract the token from the Authorization header
+
+
 async def get_token(authorization: Optional[str] = Header(None)):
     if authorization is None:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
+        raise HTTPException(
+            status_code=401, detail="Authorization header missing")
     parts = authorization.split()
     if parts[0].lower() != "bearer":
-        raise HTTPException(status_code=401, detail="Authorization header must start with Bearer")
+        raise HTTPException(
+            status_code=401, detail="Authorization header must start with Bearer")
     elif len(parts) == 1:
         raise HTTPException(status_code=401, detail="Token not found")
     elif len(parts) > 2:
-        raise HTTPException(status_code=401, detail="Authorization header must be Bearer + \\s + token")
+        raise HTTPException(
+            status_code=401, detail="Authorization header must be Bearer + \\s + token")
     token = parts[1]
     return token
+
 
 def verify_token(token: str = Depends(get_token)):
     try:
@@ -69,15 +76,19 @@ def verify_token(token: str = Depends(get_token)):
     except PyJWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+
 # Load the BLIP model and processor
 try:
-    processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-    model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+    processor = BlipProcessor.from_pretrained(
+        "Salesforce/blip-image-captioning-base")
+    model = BlipForConditionalGeneration.from_pretrained(
+        "Salesforce/blip-image-captioning-base")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model.to(device)
     print(f"Model loaded on {device}")
 except Exception as e:
     print("Error loading model:", e)
+
 
 @app.post("/generate-caption/")
 async def generate_caption(file: UploadFile = File(...), token_data: TokenData = Depends(verify_token)):
@@ -92,7 +103,8 @@ async def generate_caption(file: UploadFile = File(...), token_data: TokenData =
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
-        raise HTTPException(status_code=400, detail="Invalid image file") from e
+        raise HTTPException(
+            status_code=400, detail="Invalid image file") from e
 
     try:
         # Prepare the image for the model
@@ -104,7 +116,9 @@ async def generate_caption(file: UploadFile = File(...), token_data: TokenData =
 
         return JSONResponse(content={"caption": caption})
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Error generating caption") from e
+        raise HTTPException(
+            status_code=500, detail="Error generating caption") from e
+
 
 @app.get("/")
 def read_root():

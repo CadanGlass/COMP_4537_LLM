@@ -60,7 +60,7 @@ app.add_middleware(
         "Content-Type",
         "Accept",
     ],
-    expose_headers=[""],
+    expose_headers=["*"],
 )
 
 

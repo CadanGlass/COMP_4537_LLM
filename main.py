@@ -3,16 +3,13 @@
 # Standard Library Imports
 import io
 import os
-from typing import Optional
 
 # Third-Party Imports
 from fastapi import (
     FastAPI,
     File,
     UploadFile,
-    HTTPException,
-    Header,
-    Form
+    HTTPException
 )
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -38,14 +35,11 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origins=origins,  # Ensure that your allowed origins are set correctly
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=[
-        "Authorization",
-        "Content-Type",
-        "Accept",
-    ],
-    expose_headers=["*"],
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+    expose_headers=["*"]  # Expose all headers
 )
 
 # Load the image captioning model
@@ -70,7 +64,6 @@ num_beams = 4
 def read_root():
     return {"message": "Welcome to the Image-to-Text Generator API."}
 
-
 @app.post("/generate-caption/")
 async def generate_caption(file: UploadFile = File(...)):
     if not file.content_type.startswith("image/"):
@@ -80,6 +73,7 @@ async def generate_caption(file: UploadFile = File(...)):
         image_bytes = await file.read()
         image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     except Exception as e:
+        print(f"Error reading image: {e}")
         raise HTTPException(
             status_code=400, detail="Invalid image file") from e
 
@@ -93,6 +87,7 @@ async def generate_caption(file: UploadFile = File(...)):
 
         return JSONResponse(content={"caption": caption})
     except Exception as e:
+        print(f"Error generating caption: {e}")
         raise HTTPException(
             status_code=500, detail="Error generating caption") from e
 

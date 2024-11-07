@@ -20,9 +20,12 @@ ALGORITHM = os.getenv("ALGORITHM")
 app = FastAPI(title="Image-to-Text Generator")
 # CORS configuration
 origins = [
-    "https://comp4537-term-project.netlify.app",  # Your hosted frontend URL
-    "http://localhost:3000",  # Local development
-    "http://localhost:5173"
+    "https://4537llm.online",                        # Your HTTPS domain
+    "https://www.4537llm.online",                    # WWW subdomain
+    "https://comp4537-term-project.netlify.app",     # Hosted frontend URL
+    "https://spontaneous-vacherin-eda866.netlify.app",  # New frontend URL
+    "http://localhost:3000",                         # Local development
+    "http://localhost:5173"    
 ]
 app.add_middleware(
     CORSMiddleware,
